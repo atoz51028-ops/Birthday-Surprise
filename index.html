@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birthday Surprise</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CORE STYLES & SMOOTH TRANSITIONS --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; background-color: #222; overflow: hidden; 
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* Screen Management System */
+        .screen {
+            position: absolute;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            z-index: 1;
+            display: flex; 
+            justify-content: center;
+            align-items: center;
+        }
+
+        .screen.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 10;
+        }
+
+        /* --- SCREEN 1 & 2: KEYPAD & ERROR --- */
+        .app-container {
+            width: 900px; height: 600px;
+            border-radius: 20px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background-color: #fff;
+            display: flex;
+        }
+        
+        .left-panel {
+            width: 50%;
+            background: repeating-linear-gradient(90deg, #fcf5e3, #fcf5e3 20px, #f4ebd0 20px, #f4ebd0 40px);
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
+        }
+        .star { position: absolute; font-size: 20px; }
+        .star.red { top: 50px; left: 150px; color: #c62828; }
+        .star.blue-1 { top: 280px; left: 420px; color: #2d88a8; }
+        .star.blue-2 { bottom: 100px; left: 380px; color: #2d88a8; }
+
+        .image-frame {
+            background-color: #9179be; padding: 20px; border-radius: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .image-frame-inner {
+            background-color: white; padding: 5px; border-radius: 20px;
+            border: 3px solid #e5b55d; 
+        }
+        .image-frame img, .image-frame video { width: 320px; height: auto; border-radius: 10px; display: block; }
+
+        .right-panel {
+            width: 50%; background-color: #8b72b2; color: white;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 10px;
+        }
+        .right-panel h2 { font-size: 25px; margin-bottom: 10px; font-weight: bold; text-align: center;}
+        .right-panel p { font-size: 14px; margin-bottom: 30px; color: #f0e6ff; text-align: center;}
+
+        /* Keypad Specific */
+        .passcode-display { display: flex; gap: 15px; margin-bottom: 40px; }
+        .passcode-box {
+            width: 50px; height: 50px; border: 2px solid #a68dc7; border-radius: 10px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px; background-color: rgba(255,255,255,0.1);
+        }
+        .passcode-box.active { border-color: #f1c40f; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .keypad button {
+            width: 70px; height: 70px; border-radius: 50%; border: none;
+            background-color: white; color: #c62828; font-size: 24px; font-weight: bold;
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.1s;
+        }
+        .keypad button:active { transform: scale(0.95); }
+        .keypad button.action-btn { color: #d16b7a; font-size: 20px; }
+
+        /* Error Specific */
+        .error-box { border: 2px solid #a68dc7; background-color: rgba(255, 255, 255, 0.05); }
+        .try-again-btn {
+            background: linear-gradient(180deg, #ee3a68 0%, #c41e47 100%);
+            color: white; border: none; padding: 15px 40px; border-radius: 12px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
+            transition: transform 0.1s; display: flex; align-items: center; gap: 8px;
+        }
+        .try-again-btn:active { transform: translateY(2px); }
+        
+        /* --- FIXED SHAKE ANIMATION --- */
+        /* Added .active to ensure it only animates when the screen is visible */
+        #screen-error.active .app-container { 
+            animation: wrong-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; 
+        }
+        
+        @keyframes wrong-shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px) rotate(-1deg); }
+            20%, 40%, 60%, 80% { transform: translateX(8px) rotate(1deg); }
+        }
+
+        /* --- SCREEN 3: SUCCESS --- */
+        #screen-success .container {
+            width: 900px; height: 600px; position: relative;
+            background: repeating-linear-gradient(90deg, #fce4e6, #fce4e6 30px, #ffffff 30px, #ffffff 60px);
+            border-radius: 15px; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            padding-top: 60px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 4px solid #333;
+        }
+        .checkered-border { position: absolute; width: 100%; height: 25px; background: repeating-conic-gradient(#e53749 0% 25%, #ffffff 0% 50%) 50% / 30px 30px; }
+        .checkered-border.top { top: 0; } .checkered-border.bottom { bottom: 0; }
+        
+        .image-wrapper { width: 300px; height: auto; display: flex; justify-content: center; align-items: center; position: relative; margin-bottom: 20px; z-index: 10; }
+        .image-wrapper video { width: 90%; height: auto; border-radius: 10px; }
+        
+        .subtitle { font-family: "Nunito", sans-serif; font-size: 20px; color: #b81d2c; font-weight: 800; margin-bottom: 30px; z-index: 10; }
+
+        #success-subtitle1{ font-family: "Nunito", sans-serif; font-size: 20px; color: #b81d2c; font-weight: 800; margin-bottom: 30px; z-index: 10; position: relative; top: 50px;}
+        
+        #success-subtitle1::after{content: "MADHARCHOD"; color: black; font-size: 25px; position: relative; left: 10px; text-decoration: underline;}
+        #success-subtitle1.active::after{content: ""; color: black; font-size: 25px; position: relative; left: 10px; text-decoration: underline;}
+
+        .button-group { display: flex; gap: 40px; z-index: 10; }
+        .btn {
+            font-family: "Nunito", sans-serif; font-size: 20px; font-weight: 900; color: white;
+            background-color: #d93848; padding: 12px 45px; border: none; border-radius: 30px;
+            cursor: pointer; position: relative; box-shadow: 0 6px 0 #9e1f2a, 0 10px 10px rgba(0,0,0,0.2); transition: all 0.1s;
+        }
+        .btn::before { content: ""; position: absolute; top: 3px; left: 3px; right: 3px; bottom: 3px; border: 2px dashed rgba(255,255,255,0.6); border-radius: 26px; pointer-events: none; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #9e1f2a, 0 4px 10px rgba(0,0,0,0.2); }
+
+        /* --- SCREEN 4: HEART BOXES --- */
+        .main-container {
+            width: 900px; height: 600px; position: relative;
+            background: repeating-linear-gradient(90deg, #fce4e6, #fce4e6 30px, #ffffff 30px, #ffffff 60px);
+            border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 4px solid #333;
+        }
+        .top-section { display: flex; gap: 60px; margin-top: 60px; z-index: 10; }
+        .heart-wrapper { position: relative; width: 140px; height: 140px; cursor: pointer; transition: transform 0.2s ease; }
+        .heart-wrapper:hover { transform: scale(1.1) translateY(-10px); }
+        .heart-wrapper img { width: 100%; height: 100%; object-fit: contain; }
+        .heart-wrapper::before {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 180px; height: 180px;
+            background: repeating-conic-gradient(from 0deg, transparent 0deg 10deg, rgba(255, 182, 193, 0.5) 10deg 12deg);
+            border-radius: 50%; z-index: -1; opacity: 0.6;
+        }
+        .center-section { margin-top: 40px; display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        .image-box {
+            width: 400px; height: 200px; background-color: white; border: 3px solid #f08b9b; border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center;
+            overflow: hidden; margin-bottom: 20px; cursor: pointer;
+        }
+        .image-box video { width: 100%; height: 100%; object-fit: cover; }
+        .instruction-text { color: #8a1c2c; font-size: 26px; text-align: center; line-height: 1.3; text-shadow: 1px 1px 0px rgba(255,255,255,0.5); }
+        .pop { animation: popEffect 0.3s ease; }
+        @keyframes popEffect { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+        /* --- SCREEN 5: MEMORIES (Heart 1) --- */
+        .screen-container {
+            width: 1000px; height: 650px; background-color: #ffecf2; background-image: radial-gradient(#fdd5e1 2px, transparent 2px);
+            background-size: 30px 30px; border-radius: 20px; position: relative; overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5); border: 4px solid #333;
+        }
+        .card-memories {
+            width: 900px; height: 550px; background-color: #fffaf0; background-image: radial-gradient(#f0e6d2 1.5px, transparent 1.5px);
+            background-size: 20px 20px; border-radius: 25px; position: absolute; top: 50px; left: 50px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 3px solid #f5deb3;
+            display: flex; flex-direction: column; align-items: center; padding: 20px;
+        }
+        .close-btn1 {
+            position: absolute; top: 15px; right: 15px; width: 36px; height: 36px;
+            border-radius: 50%; border: 2px solid #d93848; background: white; color: #d93848;
+            font-size: 20px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center;
+            transition: transform 0.2s; z-index: 20;
+        }
+        .close-btn1:hover { transform: scale(1.1); background: #d93848; color: white; }
+        
+        .header-section { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
+        .title-tiles { display: flex; gap: 5px; z-index: 2; transform: rotate(-2deg); }
+        .tile { width: 45px; height: 50px; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-family: 'Fredoka One', cursive; font-size: 28px; color: white; box-shadow: 2px 4px 6px rgba(0,0,0,0.2), inset -2px -2px 5px rgba(0,0,0,0.2); text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        .t1 { background: #e53935; transform: rotate(-5deg) translateY(2px); } .t2 { background: #8e24aa; transform: rotate(3deg) translateY(-2px); } .t3 { background: #e53935; transform: rotate(-2deg) translateY(4px); } .t4 { background: #fb8c00; transform: rotate(5deg) translateY(-1px); } .t5 { background: #e91e63; transform: rotate(-4deg) translateY(3px); } .t6 { background: #d81b60; transform: rotate(2deg) translateY(-2px); } .t7 { background: #fef3c7; color: #a61e2d; transform: rotate(-3deg) translateY(1px); border: 2px solid #eab308;} .t8 { background: #8e0000; transform: rotate(4deg) translateY(2px); }
+        
+        .gallery-container { width: 100%; flex: 1; display: flex; align-items: center; position: relative; margin-top: 10px; padding: 0 40px; }
+        .carousel { display: flex; gap: 40px; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; padding: 20px 10px; width: 100%; }
+        .carousel::-webkit-scrollbar { display: none; }
+        .photo-item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; position: relative; cursor: pointer; transform-origin: top center; }
+        .clothespin { width: 14px; height: 30px; background: linear-gradient(to right, #d4a373, #faedcd, #d4a373); border-radius: 3px; position: absolute; top: -15px; z-index: 5; box-shadow: 1px 2px 3px rgba(0,0,0,0.3); }
+        .clothespin::after { content: ''; position: absolute; top: 12px; left: 2px; right: 2px; height: 1px; background: #8b5a2b; }
+        .photo-frame { background: white; padding: 8px 8px 30px 8px; border: 10px solid transparent; background-image: linear-gradient(white, white), repeating-linear-gradient(45deg, #f43f5e 0 10px, #fff 10px 20px); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 2px 5px 15px rgba(0,0,0,0.15); border-radius: 4px; position: relative; transition: transform 0.2s; }
+        .photo-frame img { width: 250px; height: 220px; object-fit: cover; display: block; }
+        .photo-label { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); background-color: #ffcdd2; border: 2px solid white; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 900; color: #b71c1c; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        @keyframes sway { 0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 50% { transform: rotate(-5deg); } 75% { transform: rotate(3deg); } 100% { transform: rotate(0deg); } }
+        .photo-item.sway .photo-frame { animation: sway 0.8s ease-in-out; }
+        
+        .nav-btn { position: absolute; width: 40px; height: 40px; background: #d93848; color: white; border: 2px solid white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; z-index: 10; box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: transform 0.1s; }
+        .nav-btn:hover { transform: scale(1.1); background: #b71c1c; }
+        .nav-btn.left { left: 10px; } .nav-btn.right { right: 10px; }
+        .footer-section { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; position: relative; }
+        .camera-icon { position: absolute; left: 30px; bottom: 10px; font-size: 30px; opacity: 0.7; }
+        .instructions { font-size: 13px; font-weight: 800; color: #d81b60; display: flex; align-items: center; gap: 5px; }
+
+        /* --- SCREEN 6: BIRTHDAY CARD (Heart 3) --- */
+        .card-video { width: 1000px; height: 650px; background-color: #8b72b2; border-radius: 20px; position: relative; display: flex; justify-content: center; align-items: center; box-shadow: 0 15px 40px rgba(0,0,0,0.5); overflow: hidden; padding: 40px; }
+        .content-wrapper { display: flex; width: 100%; height: 100%; align-items: center; z-index: 10; }
+        .left-section { width: 45%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        .checkered-frame { background: repeating-conic-gradient(#ffffff 0% 25%, #d8ccee 0% 50%) 50% / 24px 24px; padding: 5px; border-radius: 12px; box-shadow: 0 15px 30px rgba(0,0,0,0.3); }
+        .inner-frame { background-color: white; padding: 0px; border-radius: 8px; }
+        .inner-frame video { width: 430px; height: 580px; object-fit: cover; border-radius: 4px; display: block; }
+        .ribbon { position: absolute; bottom: -30px; left: -90px; width: 80px; height: 80px; z-index: 5; }
+        .ribbon svg { width: 100%; height: 100%; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3)); }
+        .right-section { width: 55%; color: white; padding: 0 40px; display: flex; flex-direction: column; gap: 25px; }
+        .header-text { font-size: 32px; font-weight: 700; line-height: 1.3; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .body-text { font-size: 18px; line-height: 1.6; text-align: center; font-weight: 700; letter-spacing: 0.5px; }
+        
+        #close-btn31 { width: 50px; height: 50px; border: 0; cursor: pointer; border-radius: 50%; position: absolute; top: 20px; right: 20px; transition: transform 0.3s ease; display: none; z-index: 100; background: white; }
+        #close-btn31:hover { transform: scale(1.1); }
+        #yellow::after{ content: "Piyush Randi 👙"; color: yellow; font-size: 30px; }
+        #yellow1::after{ content: " BAWLI GAND"; color: yellow; font-size: 30px; }
+        #yellow2::after{ content: " Bawli Gand Piyush Raand 🧸🎂❤️"; color: yellow; font-size: 25px; }
+
+        /* --- SCREEN 7: MAKE A WISH (Heart 2) --- */
+        .main-card-wish {
+            width: 850px; height: 550px; background-color: #fff9f6; border-radius: 20px; border: 2px solid #991b22;
+            position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 10; display: flex; flex-direction: column; align-items: center; padding: 20px;
+        }
+        .checkered-strip-right { position: absolute; top: 0; right: 0; width: 30px; height: 100%; background: repeating-conic-gradient(#991b22 0% 25%, #fff 0% 50%) 50% / 15px 15px; border-top-right-radius: 18px; border-bottom-right-radius: 18px; border-left: 1px solid #991b22; }
+        .checkered-strip-bottom { position: absolute; bottom: 0; right: 30px; width: 250px; height: 30px; background: repeating-conic-gradient(#991b22 0% 25%, #fff 0% 50%) 50% / 15px 15px; border-bottom-right-radius: 18px; border-top: 1px solid #991b22; border-left: 1px solid #991b22; }
+        .close-btn2 { position: absolute; top: 15px; right: 45px; background: white; border: 2px solid #991b22; color: #991b22; border-radius: 50%; width: 32px; height: 32px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: transform 0.2s; z-index: 20; }
+        .close-btn2:hover { transform: scale(1.1); background: #ffebf0; }
+        .close-btn2::before { content: '✕'; font-family: Arial, sans-serif; }
+        .title-wish { font-family: 'Fredoka One', cursive; font-size: 48px; color: #991b22; letter-spacing: 2px; margin-top: 30px; text-shadow: 2px 2px 0px rgba(153, 27, 34, 0.2); z-index: 10; }
+        
+        .left-deco { position: absolute; left: 40px; top: 250px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .left-text { font-family: 'Caveat', cursive; font-size: 36px; color: #991b22; transform: rotate(-10deg); line-height: 0.9; text-align: center; margin-left: 20px; margin-bottom: 20px; }
+        .squiggle-pink { stroke: #d97390; stroke-width: 3; fill: none; } .squiggle-purple { stroke: #9b59b6; stroke-width: 3; fill: none; }
+        
+        .right-deco { position: absolute; right: 60px; bottom: 30px; width: 120px; height: 250px; z-index: 5; }
+        
+        .cake-area { position: relative; margin-top: 20px; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 10; }
+        .candles { display: flex; gap: 15px; margin-bottom: -5px; z-index: 10; position: relative; top: 70px; }
+        .candle { width: 14px; height: 55px; background: #a61b2b; border-radius: 3px; position: relative; cursor: pointer; box-shadow: inset -2px 0 3px rgba(0,0,0,0.2); }
+        .candle::before { content: ''; position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 2px; height: 5px; background: #333; }
+        .flame { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); width: 12px; height: 18px; background: radial-gradient(ellipse at bottom, #fff 10%, #ffcc00 50%, #ff6600 100%); border-radius: 50% 50% 20% 20% / 60% 60% 40% 40%; box-shadow: 0 0 10px rgba(255, 204, 0, 0.6), 0 0 20px rgba(255, 102, 0, 0.3); transition: all 0.3s ease; animation: flicker 0.15s infinite alternate; }
+        @keyframes flicker { 0% { transform: translateX(-50%) scale(1) rotate(-2deg); opacity: 0.9; } 100% { transform: translateX(-50%) scale(1.1) rotate(2deg); opacity: 1; } }
+        .smoke { position: absolute; top: -20px; left: 50%; width: 8px; height: 8px; background: rgba(150, 150, 150, 0.5); border-radius: 50%; opacity: 0; pointer-events: none; }
+        .candle.blown-out .flame { opacity: 0; animation: none; transform: translateX(-50%) scale(0); }
+        .candle.blown-out .smoke { animation: rise 1.5s ease-out forwards; }
+        @keyframes rise { 0% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(-50%, -60px) scale(4); opacity: 0; } }
+        
+        .cake-svg { width: 400px; height: 300px; filter: drop-shadow(0px 10px 10px rgba(0, 0, 0, 0.1)); position: relative; top: -30px; }
+        .click-me-tag { position: absolute; bottom: 70px; right: -30px; background: #991b22; color: white; font-size: 12px; padding: 5px 10px; border-radius: 10px; transform: rotate(15deg); box-shadow: 0 4px 6px rgba(0,0,0,0.2); animation: bounce 1s infinite alternate; pointer-events: none; }
+        .click-me-tag::after { content: ''; position: absolute; bottom: -5px; left: 10px; border-width: 5px 5px 0; border-style: solid; border-color: #991b22 transparent transparent transparent; }
+        @keyframes bounce { 0% { transform: rotate(15deg) translateY(0); } 100% { transform: rotate(15deg) translateY(-5px); } }
+        
+        .instruction { position: absolute; bottom: 15px; left: 20px; width: calc(100% - 40px); text-align: center; font-size: 13px; color: #a67a7a; font-family: Arial, sans-serif; font-weight: bold; z-index: 10; }
+        .instruction span { color: #991b22; }
+        
+        .success-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); background: rgba(255, 255, 255, 0.95); padding: 30px 50px; border-radius: 20px; border: 3px solid #991b22; text-align: center; opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .success-overlay.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        .success-overlay h2 { color: #991b22; font-size: 36px; margin-bottom: 10px; }
+        .success-overlay p { color: #666; font-family: 'Caveat', cursive; font-size: 24px; }
+
+    </style>
+</head>
+<body>
+
+    <!-- ================= SCREEN 1: KEYPAD ================= -->
+    <div class="screen active" id="screen-keypad">
+        <div class="app-container">
+            <div class="left-panel">
+                <span class="star red">★</span><span class="star blue-1">★</span><span class="star blue-2">★</span>
+                <div class="image-frame"><div class="image-frame-inner"><img src="image/9.webp" alt="Happy"></div></div>
+            </div>
+            <div class="right-panel">
+                <h2>Enter a passcode</h2>
+                <p>Enter the 4-digit secret passcode 🔑</p>
+                <div class="passcode-display">
+                    <div class="passcode-box active" id="box-0"></div><div class="passcode-box" id="box-1"></div>
+                    <div class="passcode-box" id="box-2"></div><div class="passcode-box" id="box-3"></div>
+                </div>
+                <div class="keypad">
+                    <button onclick="pressNum('1')">1</button><button onclick="pressNum('2')">2</button><button onclick="pressNum('3')">3</button>
+                    <button onclick="pressNum('4')">4</button><button onclick="pressNum('5')">5</button><button onclick="pressNum('6')">6</button>
+                    <button onclick="pressNum('7')">7</button><button onclick="pressNum('8')">8</button><button onclick="pressNum('9')">9</button>
+                    <button class="action-btn" onclick="deleteNum()">⌫</button><button onclick="pressNum('0')">0</button><button class="action-btn" onclick="submitPasscode()">❤️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCREEN 2: ERROR ================= -->
+    <div class="screen" id="screen-error">
+        <div class="app-container">
+            <div class="left-panel">
+                <span class="star red">★</span><span class="star blue-1">★</span><span class="star blue-2">★</span>
+                <div class="image-frame">
+                    <div class="image-frame-inner">
+                        <!-- preload="none" prevents slow loading of hidden videos -->
+                        <video src="image/giphy2.mp4" autoplay loop preload="none"></video>
+                    </div>
+                </div>
+            </div>
+            <div class="right-panel">
+                <h2>SAHI PASSCODE DAL BHOSDIKA</h2>
+                <p>Oops! Wrong Passcode! Try again, cutie! 🙈</p>
+                <div class="passcode-display">
+                    <div class="passcode-box error-box" id="err-box-0"></div><div class="passcode-box error-box" id="err-box-1"></div>
+                    <div class="passcode-box error-box" id="err-box-2"></div><div class="passcode-box error-box" id="err-box-3"></div>
+                </div>
+                <button class="try-again-btn" onclick="tryAgain()">Try Again 🔄</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCREEN 3: SUCCESS ================= -->
+    <div class="screen" id="screen-success">
+        <div class="container">
+            <div class="checkered-border top"></div>
+            <div class="checkered-border bottom"></div>
+            <div style="background-color: transparent; text-align: center; width: 60%; height: 18%;">
+                <svg viewBox="0 0 1000 250" width="100%" height="100%">
+                    <defs>
+                        <path id="archPath" d="M 50,120 Q 500,10 950,120" fill="none" />
+                        <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                            <feDropShadow dx="2" dy="4" stdDeviation="2" flood-color="#5a0b16" flood-opacity="0.5" />
+                        </filter>
+                    </defs>
+                    <text font-family="'Arial Rounded MT Bold', 'Nunito', 'Fredoka', sans-serif" font-weight="900" font-size="100" fill="#8b1c31" filter="url(#shadow)">
+                        <textPath href="#archPath" startOffset="50%" text-anchor="middle" textLength="880" lengthAdjust="spacingAndGlyphs">I have made something for you</textPath>
+                    </text>
+                </svg>
+            </div>
+            <div class="image-wrapper">
+                <video src="image/giphy1.mp4" id="gif" autoplay loop preload="metadata"></video>
+            </div>
+            <p class="subtitle" id="success-subtitle">Do you wanna see it ?</p>
+            <div class="button-group">
+                <button class="btn" onclick="sayYes()">YES</button>
+                <button class="btn" onclick="sayNo()">NO</button>
+            </div>
+            <p class="subtitle" id="success-subtitle1">JISNA "NO" NAHI KIYA VO CAPITAL LETTER MAI </p>
+        </div>
+    </div>
+
+    <!-- ================= SCREEN 4: HEART BOXES ================= -->
+    <div class="screen" id="screen-heartboxes">
+        <div class="main-container">
+            <div class="top-section">
+                <div class="heart-wrapper" id="heart-1"><img src="image/svg1.svg" alt="Heart 1"></div>
+                <div class="heart-wrapper" id="heart-2"><img src="image/svg1.svg" alt="Heart 2"></div>
+                <div class="heart-wrapper" id="heart-3"><img src="image/svg1.svg" alt="Heart 3"></div>
+            </div>
+            <div class="center-section">
+                <div class="image-box">
+                    <video src="image/giphy3.mp4" autoplay loop preload="metadata"></video>
+                </div>
+                <h2 class="instruction-text">Tap on the mystery box<br>to unlock your gifts!</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCREEN 5: MEMORIES (Heart 1) ================= -->
+    <div class="screen" id="screen-memories">
+        <div class="screen-container">
+            <div class="card-memories">
+                <button class="close-btn1" onclick="showScreen('screen-heartboxes')">✕</button>
+                <div class="header-section">
+                    <div class="title-tiles">
+                        <div class="tile t1">M</div><div class="tile t2">E</div><div class="tile t3">M</div><div class="tile t4">O</div>
+                        <div class="tile t5">R</div><div class="tile t6">I</div><div class="tile t7">E</div><div class="tile t8">S</div>
+                    </div>
+                </div>
+                <div class="gallery-container">
+                    <button class="nav-btn left" onclick="scrollGallery('left')">❮</button>
+                    <div class="carousel" id="carousel-track">
+                        <!-- 8 Photos -->
+                        <div class="photo-item" onclick="toggleSway(this)"><div class="clothespin"></div><div class="photo-frame"><img src="image/1.webp" loading="lazy" alt="Photo 1"><div class="photo-label">Birthday Boy 🎂🎉🎊</div></div></div>
+                        <div class="photo-item" onclick="toggleSway(this)"><div class="clothespin"></div><div class="photo-frame"><img src="image/2.webp" loading="lazy" alt="Photo 2"><div class="photo-label">Anand Gift for Piyush 🎁💦💦💦</div></div></div>
+                        <div class="photo-item" onclick="toggleSway(this)"><div class="clothespin"></div><div class="photo-frame"><img src="image/3.jpg" loading="lazy" alt="Photo 3" style="width: 300px;"><div class="photo-label">All Backchod In One Frame 🐶</div></div></div>
+                        <div class="photo-item" onclick="toggleSway(this)"><div class="clothespin"></div><div class="photo-frame"><img src="image/4.jpg" loading="lazy" alt="Photo 4"><div class="photo-label">Baba Piyush Randi 👙👙</div></div></div>
+                        <div class="photo-item" onclick="toggleSway(this)"><div class="clothespin"></div><div class="photo-frame"><img src="image/5.jpg" loading="lazy" alt="Photo 5"><div class="photo-label">Smiling Together 😊</div></div></div>
+                        <div class="photo-item" onclick="toggleSway(this)"><div class="clothespin"></div><div class="photo-frame"><img src="image/6.webp" loading="lazy" alt="Photo 6"><div class="photo-label">Dark Work of Piyush 💀💀</div></div></div>
+                        <div class="photo-item" onclick="toggleSway(this)"><div class="clothespin"></div><div class="photo-frame"><img src="image/7.webp" loading="lazy" alt="Photo 7"><div class="photo-label">Anand Give Party To All 😁😁</div></div></div>
+                        <div class="photo-item" onclick="toggleSway(this)"><div class="clothespin"></div><div class="photo-frame"><img src="image/8.jpg" loading="lazy" alt="Photo 8"><div class="photo-label">Piyush Ready for His Work 👙💦</div></div></div>
+                    </div>
+                    <button class="nav-btn right" onclick="scrollGallery('right')">❯</button>
+                </div>
+                <div class="footer-section">
+                    <div class="camera-icon">📷</div>
+                    <div class="instructions"><span>🌸</span> Use your Fingure to scroll right and view all memories otherwise FUCK OFF<span>🌸</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCREEN 6: BIRTHDAY CARD (Heart 3) ================= -->
+    <div class="screen" id="screen-video-card">
+        <div class="card-video">
+            <button id="close-btn31" onclick="closeVideoCard()"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle opacity="0.5" cx="12" cy="12" r="10" stroke="#1C274C" stroke-width="1.5"></circle><path d="M14.5 9.50002L9.5 14.5M9.49998 9.5L14.5 14.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path></svg></button>
+            <div class="content-wrapper">
+                <div class="left-section">
+                    <div class="image-wrapper">
+                        <div class="checkered-frame">
+                            <div class="inner-frame">
+                                <video id="video2" width="430" preload="none" onclick="toggleVideoPlay(this)">
+                                    <source src="image/giphy5.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                        </div>
+                        <div class="ribbon">
+                            <svg viewBox="0 0 100 100">
+                                <path d="M 30 70 L 15 95 L 35 95 L 45 70 Z" fill="#5a2d8c" /><path d="M 45 70 L 60 95 L 80 95 L 55 70 Z" fill="#5a2d8c" />
+                                <path d="M 40 40 C 10 10 10 60 40 50" fill="#692e9e" /><path d="M 45 40 C 75 10 75 60 45 50" fill="#692e9e" />
+                                <rect x="35" y="42" width="15" height="15" rx="4" fill="#4a1b7a" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="right-section">
+                    <div class="header-text" id="yellow">Happy birthday to my <br></div>
+                    <p class="body-text">I hope this year brings you everything you've been wishing for and so much more. Thank you for making my hostel life interesting .</p>
+                    <br>
+                    <p id="yellow1" class="body-text" style="color: black; font-size: 25px;">Kachha mai Kachha , Kachha mai aand janamdin mubarak ho </p>
+                    <br>
+                    <p class="body-text" id="yellow2">Happy birthday, my </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCREEN 7: MAKE A WISH (Heart 2) ================= -->
+    <div class="screen" id="screen-make-a-wish">
+        <div class="main-card-wish">
+            <div class="checkered-strip-right"></div>
+            <!-- <div class="checkered-strip-bottom"></div> -->
+            <button class="close-btn2" onclick="showScreen('screen-heartboxes')"></button>
+            <h1 class="title-wish">MAKE A WISH</h1>
+            <div class="left-deco">
+                <svg width="40" height="60" viewBox="0 0 40 60"><path d="M 30 10 Q 10 20 20 40 T 10 60" class="squiggle-pink" /></svg><br>
+                <svg width="50" height="80" viewBox="0 0 50 80"><path d="M 40 10 Q 20 15 30 30 T 15 50 Q 20 65 40 70" class="squiggle-pink" /><path d="M 10 50 L 15 55 L 5 60 Z" fill="#ffcc00" /></svg><br>
+                <svg width="40" height="60" viewBox="0 0 40 60"><path d="M 20 10 Q 5 20 25 35 T 15 60" class="squiggle-purple" /></svg>
+            </div>
+            <div class="right-deco">
+                <svg viewBox="0 0 120 250" width="100%" height="100%">
+                    <path d="M 80 80 Q 70 120 75 160" stroke="#ccc" stroke-width="1.5" fill="none"/><path d="M 30 120 Q 50 160 60 180" stroke="#ccc" stroke-width="1.5" fill="none"/>
+                    <path d="M 80 50 C 80 30 60 30 70 50 C 60 70 80 80 80 80 C 80 80 100 70 90 50 C 100 30 80 30 80 50 Z" fill="#ff6b9d" transform="translate(0, 20)"/>
+                    <ellipse cx="25" cy="115" rx="15" ry="20" fill="#4fc3f7" /><path d="M 25 135 L 25 140" stroke="#4fc3f7" stroke-width="2"/>
+                    <g transform="translate(40, 170)">
+                        <path d="M 0 15 Q 5 -5 20 -5 Q 35 -5 40 15" fill="#222" /><rect x="-2" y="10" width="44" height="15" fill="#222" rx="5" />
+                        <circle cx="20" cy="25" r="18" fill="#ffdcb8" /><circle cx="12" cy="22" r="3" fill="#222" /><circle cx="28" cy="22" r="3" fill="#222" />
+                        <circle cx="8" cy="28" r="4" fill="#ff9999" opacity="0.6" /><circle cx="32" cy="28" r="4" fill="#ff9999" opacity="0.6" />
+                        <path d="M 16 30 Q 20 35 24 30" stroke="#222" stroke-width="2" fill="none" /><rect x="5" y="40" width="30" height="25" fill="#d93848" rx="5" />
+                        <rect x="-5" y="45" width="15" height="8" fill="#ffdcb8" rx="4" transform="rotate(-20 5 45)" /><rect x="30" y="45" width="15" height="8" fill="#ffdcb8" rx="4" transform="rotate(20 35 45)" />
+                        <circle cx="5" cy="45" r="4" fill="#ffdcb8" /><circle cx="40" cy="55" r="4" fill="#ffdcb8" />
+                        <rect x="10" y="65" width="8" height="15" fill="#ffdcb8" rx="3" /><rect x="22" y="65" width="8" height="15" fill="#ffdcb8" rx="3" />
+                        <rect x="8" y="60" width="24" height="10" fill="#ffeb3b" rx="3" /><rect x="8" y="78" width="10" height="5" fill="#4caf50" rx="2" /><rect x="22" y="78" width="10" height="5" fill="#4caf50" rx="2" />
+                    </g>
+                </svg>
+            </div>
+            <div class="cake-area" onclick="blowAll()">
+                <div class="candles" id="candles-container">
+                    <!-- Candles generated via JS for speed -->
+                </div>
+                <svg class="cake-svg" viewBox="0 0 400 300">
+                    <path d="M 80 120 L 80 170 Q 80 190 200 190 Q 320 190 320 170 L 320 120 Z" fill="#d4ccba" />
+                    <path d="M 75 120 Q 100 90 130 120 Q 160 150 200 120 Q 240 90 270 120 Q 300 150 325 120 L 325 135 Q 300 170 270 140 Q 240 110 200 140 Q 160 170 130 140 Q 100 110 75 135 Z" fill="#fff" stroke="#991b22" stroke-width="3"/>
+                    <path d="M 75 120 Q 100 90 130 120 Q 160 150 200 120 Q 240 90 270 120 Q 300 150 325 120" fill="none" stroke="#991b22" stroke-width="3" />
+                    <path d="M 40 190 L 40 260 Q 40 290 200 290 Q 360 290 360 260 L 360 190 Z" fill="#d4ccba" />
+                    <path d="M 35 190 Q 80 150 120 190 Q 160 230 200 190 Q 240 150 280 190 Q 320 230 365 190 L 365 210 Q 320 260 280 215 Q 240 170 200 215 Q 160 260 120 215 Q 80 170 35 210 Z" fill="#fff" stroke="#991b22" stroke-width="3"/>
+                    <path d="M 35 190 Q 80 150 120 190 Q 160 230 200 190 Q 240 150 280 190 Q 320 230 365 190" fill="none" stroke="#991b22" stroke-width="3" />
+                    <ellipse cx="150" cy="160" rx="4" ry="2" fill="#555" opacity="0.5" transform="rotate(20 150 160)"/><ellipse cx="240" cy="145" rx="5" ry="2" fill="#555" opacity="0.5" transform="rotate(-15 240 145)"/>
+                    <ellipse cx="280" cy="175" rx="4" ry="2" fill="#555" opacity="0.5" transform="rotate(30 280 175)"/><ellipse cx="100" cy="240" rx="5" ry="2" fill="#555" opacity="0.5" transform="rotate(-30 100 240)"/>
+                    <ellipse cx="200" cy="260" rx="4" ry="2" fill="#555" opacity="0.5" transform="rotate(10 200 260)"/><ellipse cx="300" cy="230" rx="5" ry="2" fill="#555" opacity="0.5" transform="rotate(-20 300 230)"/>
+                    <path d="M 40 210 Q 60 240 90 230 L 80 260 Q 50 250 40 210 Z" fill="#991b22" />
+                </svg>
+                <div class="click-me-tag" id="click-tag">CLICK ME!</div>
+            </div>
+            <div class="instruction">🎂 Tap any candle to blow it out, or tap the cake / <span>"CLICK ME"</span> tag to make a wish!</div>
+            <div class="success-overlay" id="success-overlay"><h2>✨ Wish Made! ✨</h2><p>I hope it comes true 💖</p></div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT ================= -->
+    <script>
+        // --- 1. SCREEN NAVIGATION (The core performance upgrade) ---
+        function showScreen(screenId) {
+            // Pause all videos to free up CPU/Memory and stop background noise
+            document.querySelectorAll('video').forEach(vid => {
+                vid.pause();
+            });
+
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // Show the target screen
+            const target = document.getElementById(screenId);
+            if (target) {
+                target.classList.add('active');
+                
+                // Play video inside the target screen if it exists
+                const video = target.querySelector('video');
+                if (video) {
+                    video.currentTime = 0; // Reset video
+                    video.play().catch(e => console.log("Autoplay prevented:", e));
+                }
+            }
+        }
+
+        // --- 2. KEYPAD LOGIC ---
+        let currentInput = ""; 
+        const correctPasscode = "2007"; 
+
+        function pressNum(num) {
+            if (currentInput.length < 4) {
+                currentInput += num;
+                updateDisplay();
+                if(currentInput.length === 4) submitPasscode();
+            }
+        }
+
+        function deleteNum() {
+            currentInput = currentInput.slice(0, -1);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            for (let i = 0; i < 4; i++) {
+                const box = document.getElementById(`box-${i}`);
+                box.textContent = (i < currentInput.length) ? currentInput[i] : "";
+                if (i === currentInput.length && currentInput.length < 4) {
+                    box.classList.add("active");
+                } else {
+                    box.classList.remove("active");
+                }
+            }
+        }
+
+        function submitPasscode() {
+            if (currentInput === correctPasscode) {
+                showScreen('screen-success');
+            } else {
+                for(let i = 0; i < 4; i++) {
+                    document.getElementById(`err-box-${i}`).textContent = currentInput[i] || "";
+                }
+                showScreen('screen-error');
+            }
+        }
+
+        function tryAgain() {
+            currentInput = ""; 
+            updateDisplay();   
+            showScreen('screen-keypad'); 
+        }
+
+        // --- 3. SUCCESS SCREEN LOGIC ---
+        function sayYes() { showScreen('screen-heartboxes'); }
+        function sayNo() {
+            document.getElementById("success-subtitle1").textContent="";
+            document.getElementById("success-subtitle1").classList.add('active')
+            document.getElementById("success-subtitle").textContent = "YES Kar De MadharChod";
+            document.getElementById("success-subtitle").style.fontSize = "30px";
+            document.getElementById("gif").src = "image/giphy2.mp4";
+        }
+
+        // --- 4. HEART BOXES LOGIC ---
+        document.getElementById("heart-1").addEventListener("click", () => showScreen('screen-memories'));
+        document.getElementById("heart-2").addEventListener("click", () => showScreen('screen-make-a-wish'));
+        document.getElementById("heart-3").addEventListener("click", () => {
+            showScreen('screen-video-card');
+            document.getElementById("close-btn31").style.display = "flex";
+            document.getElementById("video2").muted = false;
+        });
+
+        function closeVideoCard() {
+            document.getElementById("close-btn31").style.display = "none";
+            document.getElementById("video2").muted = true;
+            showScreen('screen-heartboxes');
+        }
+
+        function toggleVideoPlay(video) {
+            if (video.paused) video.play();
+            else video.pause();
+        }
+
+        // --- 5. MEMORIES CAROUSEL LOGIC ---
+        function scrollGallery(direction) {
+            const carousel = document.getElementById('carousel-track');
+            const scrollAmount = 290; // Adjusted to match photo width + gap
+            carousel.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+        }
+
+        function toggleSway(element) {
+            if (element.classList.contains('sway')) return;
+            element.classList.add('sway');
+            setTimeout(() => element.classList.remove('sway'), 800);
+        }
+
+        // --- 6. MAKE A WISH (CANDLES) LOGIC ---
+        const totalCandles = 7;
+        let blownOutCount = 0;
+
+        // Generate candles dynamically on load (Replaces document.write)
+        window.addEventListener('DOMContentLoaded', () => {
+            const candlesContainer = document.getElementById('candles-container');
+            for(let i=0; i<totalCandles; i++) {
+                const candle = document.createElement('div');
+                candle.className = 'candle';
+                candle.onclick = (e) => blowSingle(e, candle);
+                
+                const flame = document.createElement('div');
+                flame.className = 'flame';
+                
+                const smoke = document.createElement('div');
+                smoke.className = 'smoke';
+
+                candle.appendChild(flame);
+                candle.appendChild(smoke);
+                candlesContainer.appendChild(candle);
+            }
+        });
+
+        function blowSingle(event, element) {
+            event.stopPropagation();
+            if (!element.classList.contains('blown-out')) {
+                element.classList.add('blown-out');
+                blownOutCount++;
+                checkAllBlown();
+            }
+        }
+
+        function blowAll() {
+            const candles = document.querySelectorAll('.candle');
+            candles.forEach(candle => {
+                if (!candle.classList.contains('blown-out')) {
+                    candle.classList.add('blown-out');
+                    blownOutCount++;
+                }
+            });
+            checkAllBlown();
+        }
+
+        function checkAllBlown() {
+            if (blownOutCount >= totalCandles) {
+                document.getElementById('click-tag').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('success-overlay').classList.add('show');
+                    spawnConfetti();
+                }, 800);
+            }
+        }
+
+        function spawnConfetti() {
+            const colors = ['#ffc107', '#4caf50', '#00bcd4', '#e91e63', '#ff5722', '#9c27b0', '#f44336'];
+            const card = document.querySelector('.main-card-wish');
+            
+            // Reduced count for better performance (was 50, now 30)
+            for (let i = 0; i < 30; i++) {
+                let c = document.createElement('div');
+                c.style.position = 'absolute';
+                c.style.left = '50%'; c.style.top = '50%';
+                c.style.width = Math.random() * 8 + 4 + 'px';
+                c.style.height = Math.random() * 8 + 4 + 'px';
+                c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                c.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                c.style.zIndex = 999;
+                card.appendChild(c);
+
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 200 + 50;
+
+                c.animate([
+                    { transform: `translate(-50%, -50%) rotate(0deg)`, opacity: 1 },
+                    { transform: `translate(calc(-50% + ${Math.cos(angle) * velocity}px), calc(-50% + ${Math.sin(angle) * velocity}px)) rotate(${Math.random()*720}deg)`, opacity: 0 }
+                ], {
+                    duration: Math.random() * 1000 + 800,
+                    easing: 'cubic-bezier(0, .9, .57, 1)',
+                    fill: 'forwards'
+                }).onfinish = () => c.remove();
+            }
+        }
+
+        // Initialize keypad UI
+        updateDisplay();
+    </script>
+</body>
+</html>
+
+
+
+
+<!-- ================= REALISTIC RED CURTAIN ================= -->
+<div id="curtain-overlay">
+    <div class="curtain-left">
+        <div class="curtain-fabric"></div>
+    </div>
+    <div class="curtain-right">
+        <div class="curtain-fabric"></div>
+    </div>
+    <!-- Top valance -->
+    <div class="curtain-valance">
+        <div class="valance-fabric"></div>
+    </div>
+    <!-- Curtain Rod -->
+    <div class="curtain-rod"></div>
+</div>
+
+<style>
+    /* --- CURTAIN OVERLAY --- */
+    #curtain-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        z-index: 9999;
+        display: flex;
+        pointer-events: none;
+        perspective: 1000px; /* Gives a slight 3D depth */
+    }
+
+    /* --- LEFT AND RIGHT CURTAINS --- */
+    .curtain-left, .curtain-right {
+        width: 50%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        /* Heavy fabric easing */
+        transition: transform 2.5s cubic-bezier(0.25, 1, 0.3, 1);
+        overflow: hidden;
+        box-shadow: inset 0 0 50px rgba(0,0,0,0.7);
+    }
+
+    .curtain-left { left: 0; transform-origin: left center; }
+    .curtain-right { right: 0; transform-origin: right center; }
+
+    /* The realistic velvet folds texture */
+    .curtain-fabric {
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(
+            to right,
+            #4a0000 0%,
+            #8a0000 10%,
+            #c20000 20%,
+            #8a0000 30%,
+            #4a0000 40%,
+            #6e0000 50%,
+            #a80000 60%,
+            #e00000 70%,
+            #a80000 80%,
+            #6e0000 90%,
+            #4a0000 100%
+        );
+        background-size: 25vw 100%; /* Scales folds based on screen width */
+    }
+
+    /* Add a dark shadow where the curtains meet in the middle */
+    .curtain-left::after {
+        content: '';
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        width: 30px;
+        background: linear-gradient(to left, rgba(0,0,0,0.8), transparent);
+    }
+    .curtain-right::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; bottom: 0;
+        width: 30px;
+        background: linear-gradient(to right, rgba(0,0,0,0.8), transparent);
+    }
+
+    /* --- TOP VALANCE (The draped part at the top) --- */
+    .curtain-valance {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 12vh;
+        z-index: 10;
+        transition: transform 1.5s cubic-bezier(0.25, 1, 0.3, 1);
+    }
+    
+    .valance-fabric {
+        width: 100%; height: 100%;
+        background: repeating-linear-gradient(
+            to right,
+            #6e0000 0%,
+            #a80000 25%,
+            #e00000 50%,
+            #a80000 75%,
+            #6e0000 100%
+        );
+        background-size: 20vw 100%;
+        /* Scalloped bottom edge */
+        border-radius: 0 0 50% 50% / 0 0 100% 100%;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 -10px 20px rgba(0,0,0,0.5);
+    }
+
+    /* --- CURTAIN ROD --- */
+    .curtain-rod {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 15px;
+        background: linear-gradient(to bottom, #b8860b, #ffd700, #8b6508);
+        z-index: 15;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.8);
+    }
+
+    /* --- ANIMATION TRIGGERS --- */
+    #curtain-overlay.open .curtain-left { transform: translateX(-100%); }
+    #curtain-overlay.open .curtain-right { transform: translateX(100%); }
+    #curtain-overlay.open .curtain-valance { transform: translateY(-100%); } /* Valance lifts up */
+</style>
+
+<script>
+    // Trigger the curtain opening
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            const overlay = document.getElementById('curtain-overlay');
+            overlay.classList.add('open'); // Triggers the CSS transition
+            
+            // Remove overlay from DOM after animation ends so it doesn't block clicks
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 2500); 
+        }, 500); // 0.5 second delay before curtains open
+    });
+</script>
